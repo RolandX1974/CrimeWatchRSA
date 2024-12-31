@@ -1,0 +1,1029 @@
+<html><head><base href="/">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cape Town Crime Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* Existing styles */
+body { margin: 0; padding: 0; }
+#map { 
+  height: 100vh; 
+  width: 100%; 
+  position: relative; 
+  display: none; 
+  z-index: 0; 
+}
+.crime-panel {
+    position: absolute; 
+    top: 20px; 
+    left: 20px; 
+    z-index: 1000;
+    background: #d0d0d0; 
+    padding: 15px; 
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3); 
+    max-height: 80vh; 
+    overflow-y: auto; 
+    width: 200px;
+    display: none; 
+    flex-wrap: wrap; 
+    justify-content: space-between;
+    cursor: move;
+}
+
+.crime-panel h3 { 
+  width: 100%; 
+  margin-bottom: 10px; 
+  cursor: move; 
+  user-select: none;
+  background: #c0c0c0; 
+  padding: 5px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.crime-icon {
+    width: 45px; 
+    height: 45px; 
+    display: inline-block; 
+    text-align: center;
+    padding: 5px; 
+    border: 1px solid #aaa; 
+    border-radius: 4px; 
+    margin: 2px;
+    flex: 0 0 calc(50% - 14px);
+    box-sizing: border-box;
+    cursor: grab;
+    background: #d8d8d8; 
+}
+.crime-icon:hover { 
+    background: #c0c0c0; 
+}
+
+.marker-label { font-size: 10px; margin-top: 2px; }
+.crime-marker {
+    font-size: 25px !important;
+    text-align: center;
+    line-height: 45px !important;
+    color: red;
+}
+.wedding-marker {
+    font-size: 25px !important;
+    text-align: center;
+    line-height: 45px !important;
+    color: red;
+}
+
+/* New styles for auth and chat */
+.auth-container, .chat-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.chat-container {
+    max-width: 800px; 
+    margin: 50px auto;
+    padding: 20px;
+    background: #808080; 
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    display: none;
+    height: 80vh;
+    position: relative; 
+}
+
+.chat-messages {
+    height: calc(100% - 150px);
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.message {
+    margin: 5px 0;
+    padding: 5px;
+    border-radius: 5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    white-space: pre-wrap;
+    font-size: 0.9em;
+    padding-top: 3px; 
+}
+
+.message small {
+    font-size: 0.7em;
+    color: #666;
+    display: inline;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+}
+
+.message strong {
+    font-size: 0.95em; 
+    display: block;
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
+}
+
+.message.sent {
+    background: #e3f2fd;
+    margin-left: 20px;
+}
+
+.message.received {
+    background: #f5f5f5;
+    margin-right: 20px;
+}
+
+.chat-input {
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 8px;
+}
+
+button {
+    padding: 8px 16px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #45a049;
+}
+
+input {
+    width: 100%;
+    padding: 8px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.nav-buttons {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    gap: 10px;
+}
+
+/* Add new styles for emoji panel */
+.emoji-panel {
+    position: absolute;
+    left: 105%; 
+    top: 0;
+    background: #d0d0d0;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    max-height: 80vh;
+    overflow-y: auto;
+    width: 200px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    z-index: 1000;
+}
+
+.emoji-item {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #e0e0e0;
+    border-radius: 4px;
+    font-size: 20px;
+    transition: background 0.2s;
+}
+
+.emoji-item:hover {
+    background: #c0c0c0;
+}
+
+/* Add donation button styles */
+.donate-button {
+    position: fixed;
+    bottom: 20px;
+    right: 60px;
+    background: #808080;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+    border: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.donate-button:hover {
+    background: #707070;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Donation modal styles */
+.donation-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    z-index: 2000;
+    max-width: 400px;
+    width: 90%;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1999;
+}
+
+.donation-modal h2 {
+    margin-top: 0;
+}
+
+.donation-amount {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.amount-btn {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+}
+
+.amount-btn:hover {
+    background: #f0f0f0;
+}
+
+.amount-btn.selected {
+    background: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* Mobile styles */
+@media screen and (max-width: 768px) {
+  /* Mobile navigation adjustments */
+  .nav-buttons {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    gap: 5px;
+  }
+  
+  .nav-buttons button {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  /* Mobile chat adjustments */
+  .chat-container {
+    max-width: 100%;
+    margin: 0;
+    height: 100vh;
+    padding: 10px;
+    border-radius: 0;
+  }
+
+  .chat-messages {
+    height: calc(100% - 120px);
+  }
+
+  .message {
+    font-size: 14px;
+    margin: 3px 0;
+  }
+
+  /* Mobile emoji panel adjustments */
+  .emoji-panel {
+    position: fixed;
+    left: auto;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 150px;
+    max-height: 60vh;
+  }
+
+  .emoji-item {
+    width: 35px;
+    height: 35px;
+    font-size: 24px;
+  }
+
+  /* Mobile crime panel adjustments */
+  .crime-panel {
+    top: 60px;
+    left: 10px;
+    width: 160px;
+    max-height: 70vh;
+  }
+
+  .crime-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    padding: 3px;
+  }
+
+  .marker-label {
+    font-size: 9px;
+  }
+
+  /* Mobile map adjustments */
+  .crime-marker, .wedding-marker {
+    font-size: 20px !important;
+    line-height: 35px !important;
+  }
+
+  /* Mobile auth container adjustments */
+  .auth-container {
+    max-width: 90%;
+    margin: 20px auto;
+    padding: 15px;
+  }
+
+  input {
+    padding: 10px;
+    font-size: 16px; /* Prevents zoom on input focus */
+  }
+
+  /* Adjust map marker sizes */
+  .leaflet-div-icon {
+    width: 35px !important;
+    height: 35px !important;
+  }
+  
+  /* Mobile donation button adjustments */
+  .donate-button {
+    bottom: 10px;
+    right: 50px;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+}
+
+/* Add styles for route inputs */
+.route-inputs {
+    position: absolute;
+    top: 80px; /* Below nav buttons */
+    right: 20px;
+    z-index: 1000;
+    background: #d0d0d0;
+    padding: 15px;
+    border-radius: 8px; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    width: 250px;
+}
+
+.route-inputs input {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* Mobile adjustments */
+@media screen and (max-width: 768px) {
+    .route-inputs {
+        top: 60px;
+        right: 10px;
+        width: 200px;
+    }
+}
+
+</style>
+</head>
+<body>
+
+<div class="nav-buttons">
+    <button onclick="showMap()">Map</button>
+    <button onclick="showChat()">Chat</button>
+    <button onclick="logout()">Logout</button>
+</div>
+
+<div class="route-inputs">
+    <input type="text" id="fromLocation" placeholder="From location">
+    <input type="text" id="toLocation" placeholder="To destination">
+    <button onclick="getDirections()">Get Directions</button>
+</div>
+
+<div class="auth-container" id="authContainer">
+    <h2>Login / Register</h2>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="authenticate()">Login / Register</button>
+</div>
+
+<div id="map"></div>
+<div class="crime-panel">
+    <h3>Type of Crime</h3>
+    <div class="crime-icon" draggable="true" data-crime="crimescene" style="color: red; font-size: 20px;">
+        &#x1f6a8;
+        <div class="marker-label">Crime Scene</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="bomb" style="color: red; font-size: 20px;">
+        &#x1f4a3;
+        <div class="marker-label">Bomb</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="earthquake" style="color: red; font-size: 20px;">
+        &#x1f30b;
+        <div class="marker-label">Earthquake</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="electrical" style="color: red; font-size: 20px;">
+        &#x26a1;
+        <div class="marker-label">Electrical</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="fire" style="color: red; font-size: 20px;">
+        &#x1f525;
+        <div class="marker-label">Fire</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="flooding" style="color: red; font-size: 20px;">
+        &#x1f30a;
+        <div class="marker-label">Flooding</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="kidnapping" style="color: red; font-size: 20px;">
+        &#x1f465;
+        <div class="marker-label">Kidnapping</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="rape" style="color: red; font-size: 20px;">
+        &#x26a0;&#xfe0f;
+        <div class="marker-label">Rape</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="robbery" style="color: red; font-size: 20px;">
+        &#x1f4b0;
+        <div class="marker-label">Robbery</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="shark" style="color: red; font-size: 20px;">
+        &#x1f988;
+        <div class="marker-label">Shark</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="shooting" style="color: red; font-size: 20px;">
+        &#x1f52b;
+        <div class="marker-label">Shooting</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="strike" style="color: red; font-size: 20px;">
+        &#x270a;
+        <div class="marker-label">Strike</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="theft" style="color: red; font-size: 20px;">
+        &#x1f50d;
+        <div class="marker-label">Theft</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="tornado" style="color: red; font-size: 20px;">
+        &#x1f32a;&#xfe0f;
+        <div class="marker-label">Tornado</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="tsunami" style="color: red; font-size: 20px;">
+        &#x1f30a;
+        <div class="marker-label">Tsunami</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="wedding" style="color: red; font-size: 20px;">
+        &#x1f492;
+        <div class="marker-label">Wedding</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="roadsclosed" style="color: red; font-size: 20px;">
+        &#x1f6a7;
+        <div class="marker-label">Roads Closed</div>
+    </div>
+    <div class="crime-icon" draggable="true" data-crime="protesters" style="color: red; font-size: 20px;">
+        &#x1f4d8;
+        <div class="marker-label">Protesters</div>
+    </div>
+</div>
+
+<div class="chat-container" id="chatContainer">
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="emoji-panel" id="emojiPanel"></div>
+    <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<button class="donate-button" onclick="showDonationModal()">Donate</button>
+
+<div class="modal-overlay" id="modalOverlay"></div>
+<div class="donation-modal" id="donationModal">
+    <button class="close-modal" onclick="hideDonationModal()">&#xd7;</button>
+    <h2>Support Our Project</h2>
+    <p>Choose an amount to donate:</p>
+    <div class="donation-amount">
+        <button class="amount-btn" onclick="selectAmount(10)">&#x24;10</button>
+        <button class="amount-btn" onclick="selectAmount(25)">&#x24;25</button>
+        <button class="amount-btn" onclick="selectAmount(50)">&#x24;50</button>
+        <button class="amount-btn" onclick="selectAmount(100)">&#x24;100</button>
+    </div>
+    <input type="number" id="customAmount" placeholder="Custom amount" min="1" step="1" style="margin: 10px 0;">
+    <button onclick="processDonation()" style="width: 100%;">Proceed to Payment</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>let currentUser = null;
+let users = {};
+let messages = [];
+let map;
+let markers = [];
+let selectedAmount = 0;
+let userMarker = null;
+let directionsLayer = null;
+const crimeIcons = {
+  crimescene: L.divIcon({
+    html: '<div>&#x1f6a8;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  bomb: L.divIcon({
+    html: '<div>&#x1f4a3;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  earthquake: L.divIcon({
+    html: '<div>&#x1f30b;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  electrical: L.divIcon({
+    html: '<div>&#x26a1;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  fire: L.divIcon({
+    html: '<div>&#x1f525;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  flooding: L.divIcon({
+    html: '<div>&#x1f30a;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  kidnapping: L.divIcon({
+    html: '<div>&#x1f465;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  rape: L.divIcon({
+    html: '<div>&#x26a0;&#xfe0f;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  robbery: L.divIcon({
+    html: '<div>&#x1f4b0;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  shark: L.divIcon({
+    html: '<div>&#x1f988;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  shooting: L.divIcon({
+    html: '<div>&#x1f52b;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  strike: L.divIcon({
+    html: '<div>&#x270a;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  theft: L.divIcon({
+    html: '<div>&#x1f50d;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  tornado: L.divIcon({
+    html: '<div>&#x1f32a;&#xfe0f;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  tsunami: L.divIcon({
+    html: '<div>&#x1f30a;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  wedding: L.divIcon({
+    html: '<div>&#x1f492;</div>',
+    className: 'wedding-marker',
+    iconSize: [45, 45]
+  }),
+  roadsclosed: L.divIcon({
+    html: '<div>&#x1f6a7;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  }),
+  protesters: L.divIcon({
+    html: '<div>&#x1f4d8;</div>',
+    className: 'crime-marker',
+    iconSize: [45, 45]
+  })
+};
+const commonEmojis = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '😉', '😌', '😍', '🥰', '😘', '😋', '😎', '😢', '😭', '😤', '😠', '😡', '🤔', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '👍', '👎', '👊', '✊', '🤝', '👏', '🙌', '👐', '🤲', '🤷', '🤦', '🙋', '🎉', '✨', '❤️', '😷', '🤒', '🤕', '🤢', '🤮', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤭', '🤫'];
+function showCrimePanel() {
+  document.querySelector('.crime-panel').style.display = 'flex';
+}
+function hideCrimePanel() {
+  document.querySelector('.crime-panel').style.display = 'none';
+}
+function initMap() {
+  if (map) {
+    map.remove();
+  }
+  map = L.map('map', {
+    zoomControl: false,
+    tap: true,
+    bounceAtZoomLimits: false
+  }).setView([-34.0479, 18.6168], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: ' OpenStreetMap contributors',
+    maxZoom: 18,
+    minZoom: 6
+  }).addTo(map);
+  L.control.zoom({
+    position: 'bottomright'
+  }).addTo(map);
+  map.on('click', function (e) {
+    showCrimePanel();
+  });
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 100);
+  if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition(function (position) {
+      const userLocation = [position.coords.latitude, position.coords.longitude];
+      if (userMarker) {
+        map.removeLayer(userMarker);
+      }
+      userMarker = L.marker(userLocation, {
+        icon: L.divIcon({
+          html: '<div style="color: blue; font-size: 20px;">📍</div>',
+          className: 'user-location-marker',
+          iconSize: [45, 45]
+        })
+      }).addTo(map);
+      map.setView(userLocation, 14);
+    }, function (error) {
+      console.error("Error getting location:", error);
+    });
+    navigator.geolocation.watchPosition(function (position) {
+      const userLocation = [position.coords.latitude, position.coords.longitude];
+      if (userMarker) {
+        userMarker.setLatLng(userLocation);
+      }
+    });
+  }
+}
+function authenticate() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  if (!username || !password) {
+    alert('Please enter both username and password');
+    return;
+  }
+  if (users[username]) {
+    if (users[username] === password) {
+      currentUser = username;
+      showMap();
+    } else {
+      alert('Incorrect password');
+    }
+  } else {
+    users[username] = password;
+    currentUser = username;
+    showMap();
+  }
+  document.getElementById('username').value = '';
+  document.getElementById('password').value = '';
+}
+function logout() {
+  currentUser = null;
+  document.getElementById('authContainer').style.display = 'block';
+  document.getElementById('map').style.display = 'none';
+  document.getElementById('chatContainer').style.display = 'none';
+  document.querySelector('.crime-panel').style.display = 'none';
+}
+function showMap() {
+  if (!currentUser) {
+    alert('Please login first');
+    return;
+  }
+  document.getElementById('authContainer').style.display = 'none';
+  document.getElementById('map').style.display = 'block';
+  document.getElementById('chatContainer').style.display = 'none';
+  document.querySelector('.crime-panel').style.display = 'none';
+  initMap();
+}
+function showChat() {
+  if (!currentUser) {
+    alert('Please login first');
+    return;
+  }
+  document.getElementById('authContainer').style.display = 'none';
+  document.getElementById('map').style.display = 'none';
+  document.getElementById('chatContainer').style.display = 'block';
+  document.querySelector('.crime-panel').style.display = 'none';
+  initEmojiPanel();
+}
+function sendMessage() {
+  const messageInput = document.getElementById('messageInput');
+  const message = messageInput.value.trim();
+  if (message) {
+    const formattedMessage = message.replace(/(.{1,100})/g, "$1\n");
+    const newMessage = {
+      user: currentUser,
+      text: formattedMessage,
+      timestamp: new Date()
+    };
+    messages.push(newMessage);
+    displayMessages();
+    messageInput.value = '';
+  }
+}
+function displayMessages() {
+  const chatMessages = document.getElementById('chatMessages');
+  chatMessages.innerHTML = '';
+  messages.forEach(msg => {
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message');
+    messageDiv.classList.add(msg.user === currentUser ? 'sent' : 'received');
+    const formattedText = msg.text.replace(/\n/g, '<br>');
+    messageDiv.innerHTML = `
+            <strong>${msg.user} <small>(${msg.timestamp.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    })})</small></strong>${formattedText}
+        `;
+    chatMessages.appendChild(messageDiv);
+  });
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+function dragElement(elmnt) {
+  let pos1 = 0,
+    pos2 = 0,
+    pos3 = 0,
+    pos4 = 0;
+  const header = elmnt.querySelector('h3');
+  if (header) {
+    header.onmousedown = dragMouseDown;
+  }
+  function dragMouseDown(e) {
+    e = e || window.event;
+    e.preventDefault();
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    document.onmouseup = closeDragElement;
+    document.onmousemove = elementDrag;
+  }
+  function elementDrag(e) {
+    e = e || window.event;
+    e.preventDefault();
+    pos1 = pos3 - e.clientX;
+    pos2 = pos4 - e.clientY;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    elmnt.style.top = elmnt.offsetTop - pos2 + "px";
+    elmnt.style.left = elmnt.offsetLeft - pos1 + "px";
+  }
+  function closeDragElement() {
+    document.onmouseup = null;
+    document.onmousemove = null;
+  }
+}
+function initEmojiPanel() {
+  const emojiPanel = document.getElementById('emojiPanel');
+  commonEmojis.forEach(emoji => {
+    const emojiElement = document.createElement('div');
+    emojiElement.className = 'emoji-item';
+    emojiElement.textContent = emoji;
+    emojiElement.onclick = () => {
+      const messageInput = document.getElementById('messageInput');
+      messageInput.value += emoji;
+      messageInput.focus();
+    };
+    emojiPanel.appendChild(emojiElement);
+  });
+}
+function initTouchEvents() {
+  document.querySelectorAll('.crime-icon').forEach(icon => {
+    icon.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      const crime = this.dataset.crime;
+      const touch = e.touches[0];
+      const rect = map.getContainer().getBoundingClientRect();
+      const point = L.point(touch.clientX - rect.left, touch.clientY - rect.top);
+      const latlng = map.containerPointToLatLng(point);
+      const marker = L.marker(latlng, {
+        icon: crimeIcons[crime],
+        draggable: true
+      }).addTo(map);
+      const timestamp = new Date();
+      marker.bindPopup(`
+        <b>${crime.charAt(0).toUpperCase() + crime.slice(1)}</b><br>
+        Reported: ${timestamp.toLocaleString()}
+      `);
+      markers.push({
+        marker: marker,
+        timestamp: timestamp
+      });
+      hideCrimePanel();
+    });
+  });
+  document.querySelectorAll('.emoji-item').forEach(emoji => {
+    emoji.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      const messageInput = document.getElementById('messageInput');
+      messageInput.value += this.textContent;
+      messageInput.focus();
+    });
+  });
+  const chatMessages = document.getElementById('chatMessages');
+  chatMessages.style.webkitOverflowScrolling = 'touch';
+}
+function showDonationModal() {
+  document.getElementById('donationModal').style.display = 'block';
+  document.getElementById('modalOverlay').style.display = 'block';
+}
+function hideDonationModal() {
+  document.getElementById('donationModal').style.display = 'none';
+  document.getElementById('modalOverlay').style.display = 'none';
+  resetDonationForm();
+}
+function selectAmount(amount) {
+  selectedAmount = amount;
+  document.querySelectorAll('.amount-btn').forEach(btn => {
+    btn.classList.remove('selected');
+    if (parseInt(btn.textContent.slice(1)) === amount) {
+      btn.classList.add('selected');
+    }
+  });
+  document.getElementById('customAmount').value = '';
+}
+function resetDonationForm() {
+  selectedAmount = 0;
+  document.querySelectorAll('.amount-btn').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  document.getElementById('customAmount').value = '';
+}
+function processDonation() {
+  const customAmount = document.getElementById('customAmount').value;
+  const finalAmount = customAmount ? parseFloat(customAmount) : selectedAmount;
+  if (!finalAmount || finalAmount <= 0) {
+    alert('Please select or enter a valid donation amount');
+    return;
+  }
+  alert(`Thank you for your donation of $${finalAmount}! This is a demo - in production, you would be redirected to a payment processor.`);
+  hideDonationModal();
+}
+async function getDirections() {
+  const from = document.getElementById('fromLocation').value;
+  const to = document.getElementById('toLocation').value;
+  if (!from || !to) {
+    alert('Please enter both locations');
+    return;
+  }
+  try {
+    const fromResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(from)}`);
+    const fromData = await fromResponse.json();
+    const toResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(to)}`);
+    const toData = await toResponse.json();
+    if (fromData.length === 0 || toData.length === 0) {
+      alert('One or both locations not found');
+      return;
+    }
+    const fromCoords = [parseFloat(fromData[0].lat), parseFloat(fromData[0].lon)];
+    const toCoords = [parseFloat(toData[0].lat), parseFloat(toData[0].lon)];
+    if (directionsLayer) {
+      map.removeLayer(directionsLayer);
+    }
+    const routeResponse = await fetch(`https://router.project-osrm.org/route/v1/driving/${fromCoords[1]},${fromCoords[0]};${toCoords[1]},${toCoords[0]}?overview=full&geometries=geojson`);
+    const routeData = await routeResponse.json();
+    if (routeData.code !== 'Ok') {
+      alert('Could not find a route between these locations');
+      return;
+    }
+    directionsLayer = L.geoJSON(routeData.routes[0].geometry, {
+      style: {
+        color: '#0000ff',
+        weight: 4,
+        opacity: 0.7
+      }
+    }).addTo(map);
+    map.fitBounds(directionsLayer.getBounds());
+  } catch (error) {
+    console.error('Error getting directions:', error);
+    alert('Error getting directions. Please try again.');
+  }
+}
+dragElement(document.querySelector('.crime-panel'));
+document.querySelectorAll('.crime-icon').forEach(icon => {
+  icon.addEventListener('dragstart', function (e) {
+    e.dataTransfer.setData('text/plain', this.dataset.crime);
+  });
+});
+document.getElementById('map').addEventListener('dragover', function (e) {
+  e.preventDefault();
+});
+document.getElementById('map').addEventListener('drop', function (e) {
+  e.preventDefault();
+  const crimeType = e.dataTransfer.getData('text');
+  const rect = map.getContainer().getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const point = L.point(x, y);
+  const latlng = map.containerPointToLatLng(point);
+  const marker = L.marker(latlng, {
+    icon: crimeIcons[crimeType],
+    draggable: true
+  }).addTo(map);
+  const timestamp = new Date();
+  marker.bindPopup(`
+        <b>${crimeType.charAt(0).toUpperCase() + crimeType.slice(1)}</b><br>
+        Reported: ${timestamp.toLocaleString()}
+    `);
+  markers.push({
+    marker: marker,
+    timestamp: timestamp
+  });
+  hideCrimePanel();
+});
+setInterval(() => {
+  const now = new Date();
+  markers = markers.filter(({
+    marker,
+    timestamp
+  }) => {
+    const age = now - timestamp;
+    if (age >= 24 * 60 * 60 * 1000) {
+      map.removeLayer(marker);
+      return false;
+    }
+    return true;
+  });
+}, 60000);
+document.getElementById('messageInput').addEventListener('keypress', function (e) {
+  if (e.key === 'Enter') {
+    sendMessage();
+  }
+});
+document.addEventListener('DOMContentLoaded', function () {
+  initTouchEvents();
+  initEmojiPanel();
+  document.addEventListener('touchmove', function (e) {
+    if (e.target.classList.contains('crime-panel') || e.target.classList.contains('emoji-panel')) {
+      e.preventDefault();
+    }
+  }, {
+    passive: false
+  });
+});
+document.getElementById('modalOverlay').addEventListener('click', hideDonationModal);
+initEmojiPanel();</script>
+</body>
+</html>
